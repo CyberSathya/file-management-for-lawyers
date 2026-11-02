@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Segoe UI", Arial, sans-serif; background: #f3f4f6; color: #111827; }
+    header { position: sticky; top: 0; background: #1f3a5f; padding: 12px 16px 14px; z-index: 2; }
+    .tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+    .tab { font-size: 18px; padding: 8px 18px; border-radius: 8px; border: 0; background: transparent; color: #c7d2fe; font-weight: 600; }
+    .tab.on { background: #fff; color: #1f3a5f; }
+    form.bar { display: flex; gap: 8px; }
+    input, select, textarea { font: inherit; }
+    .bar input { flex: 1; font-size: 22px; padding: 12px 14px; border: 0; border-radius: 8px; min-width: 0; }
+    button.go { font-size: 20px; padding: 0 22px; border: 0; border-radius: 8px; background: #f59e0b; color: #111; font-weight: 600; }
+    button.go:disabled { opacity: .5; }
+    #mic { font-size: 22px; width: 56px; border: 0; border-radius: 8px; background: #fff; color: #1f3a5f; }
+    #mic.on { background: #ef4444; color: #fff; animation: pulse 1s infinite; }
+    @keyframes pulse { 50% { opacity: .6; } }
+    .status { padding: 12px 16px; color: #4b5563; font-size: 16px; }
+    #results { padding: 0 16px 24px; display: grid; gap: 12px; }
+    .card { background: #fff; border-radius: 10px; padding: 14px 16px; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+    .top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+    .fileno { font-size: 26px; font-weight: 700; color: #1f3a5f; }
+    .rack { font-size: 15px; background: #e0e7ff; color: #3730a3; padding: 3px 10px; border-radius: 999px; }
+    .why { font-size: 14px; background: #fee2e2; color: #991b1b; padding: 3px 10px; border-radius: 999px; }
+    .edit { font-size: 16px; padding: 6px 14px; border-radius: 8px; border: 1px solid #1f3a5f; background: #fff; color: #1f3a5f; font-weight: 600; }
+    dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 10px 0 0; font-size: 17px; }
+    dt { color: #6b7280; }
+    dd { margin: 0; word-break: break-word; }
+    mark { background: #fde68a; padding: 0 2px; }
+    #suggest { padding: 0 16px 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 16px; color: #4b5563; }
+    #suggest:empty { display: none; }
+    .sg { font-size: 17px; padding: 8px 14px; border-radius: 999px; border: 1px solid #93c5fd; background: #eff6ff; color: #1e3a8a; }
+    .sg small { color: #6b7280; }
+    #filters { padding: 0 16px 12px; display: flex; flex-wrap: wrap; gap: 8px; }
+    #filters:empty { display: none; }
+    #filters select { font-size: 17px; padding: 8px 10px; border-radius: 8px; border: 1px solid #9ca3af; background: #fff; max-width: 100%; }
+    #filters select.set { border-color: #1f3a5f; background: #e0e7ff; font-weight: 600; }
+
+    /* Add file */
+    #addView { padding: 16px; display: none; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+    label { display: block; font-size: 15px; color: #4b5563; }
+    label input { display: block; width: 100%; margin-top: 4px; font-size: 19px; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; background: #fff; }
+    h2 { font-size: 18px; margin: 22px 0 8px; }
+    .legend { font-size: 14px; color: #4b5563; display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 10px; }
+    .dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; vertical-align: -1px; margin-right: 4px; }
+    #racks, #sRacks { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+    #sRacks { padding: 0 16px 24px; }
+    #sRacks:empty { display: none; }
+    .rk small.fn { display: block; color: #374151; margin-top: 2px; }
+    .mini { font-size: 15px; padding: 6px 12px; margin-left: 10px; border-radius: 8px; border: 1px solid #9ca3af; background: #fff; color: #1f3a5f; }
+    .rk { text-align: left; border: 3px solid transparent; border-radius: 10px; padding: 10px 12px; font-size: 15px; line-height: 1.35; color: #111; }
+    .rk b { display: block; font-size: 17px; }
+    .rk.space { background: #bbf7d0; } .rk.almost { background: #fde68a; }
+    .rk.full { background: #fecaca; opacity: .7; } .rk.unset { background: #e5e7eb; }
+    .rk.sel { border-color: #1f3a5f; box-shadow: 0 0 0 2px #fff inset; }
+    .rk .hint { color: #1e3a8a; font-weight: 600; }
+    .save { position: sticky; bottom: 0; background: #f3f4f6; padding: 14px 0 6px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .save .go { padding: 14px 28px; }
+    #preview { font-size: 17px; }
+    .ok { background: #dcfce7; border: 1px solid #86efac; border-radius: 10px; padding: 14px 16px; font-size: 18px; margin-bottom: 14px; }
+    .err { background: #fee2e2; border: 1px solid #fca5a5; border-radius: 10px; padding: 14px 16px; font-size: 17px; margin-bottom: 14px; }
+
+    /* Popups: file list, and the edit form on top of it */
+    .overlay { position: fixed; inset: 0; background: rgba(17,24,39,.55); display: none; align-items: center; justify-content: center; padding: 16px; z-index: 10; }
+    .overlay.on { display: flex; }
+    #edit { z-index: 11; }
+    .sheet { background: #f3f4f6; border-radius: 14px; width: 100%; max-width: 720px; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; }
+    .sheet h3 { margin: 0; padding: 16px 18px; background: #1f3a5f; color: #fff; font-size: 19px; }
+    .sheet .list { overflow-y: auto; padding: 12px 16px; display: grid; gap: 10px; }
+    .sheet .acts { display: flex; gap: 10px; padding: 12px 16px; border-top: 1px solid #d1d5db; background: #fff; }
+    .sheet .acts button { flex: 1; font-size: 19px; padding: 14px; border-radius: 8px; border: 0; font-weight: 600; }
+    .btn-close { background: #e5e7eb; color: #111; }
+    .btn-use { background: #f59e0b; color: #111; }
+    .btn-use:disabled { opacity: .45; }
+    #editMsg:empty { display: none; }
+
+    /* Hover preview (mouse / touchpad only) */
+    #hov { position: fixed; z-index: 9; width: 380px; max-width: calc(100vw - 32px); max-height: 60vh; overflow-y: auto;
+           background: #f3f4f6; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.25); padding: 10px; display: none; pointer-events: none; }
+    #hov.on { display: grid; gap: 8px; }
+    #hov .head { font-weight: 700; color: #1f3a5f; padding: 2px 4px; }
+    #hov .card { padding: 10px 12px; }
+    #hov .fileno { font-size: 20px; }
+    #hov dl { font-size: 15px; }
+    #hov .edit, #hov .takeout, #hov .ret { display: none; }
+
+    /* Taken-out files */
+    .takeout, .ret { font-size: 16px; padding: 6px 14px; border-radius: 8px; border: 1px solid #b91c1c; background: #fff; color: #b91c1c; font-weight: 600; }
+    .outb { margin-top: 10px; padding: 8px 12px; border-radius: 8px; background: #fee2e2; border-left: 4px solid #dc2626; font-size: 16px;
+            display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+    .over { color: #b91c1c; font-weight: 700; }
+
+    /* Tomorrow / Files out / Clean-up */
+    .view { padding: 16px; display: none; }
+    .daybar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; font-size: 18px; }
+    .daybar input { font-size: 18px; padding: 8px 10px; border-radius: 8px; border: 1px solid #9ca3af; }
+    .daybar button { font-size: 18px; padding: 8px 14px; border-radius: 8px; border: 1px solid #9ca3af; background: #fff; }
+    .stack { display: grid; gap: 10px; }
+    .meta { color: #4b5563; font-size: 16px; margin-top: 4px; }
+    .meta a { color: #1f3a5f; font-weight: 600; }
+    details.sec { background: #fff; border-radius: 10px; padding: 4px 16px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+    details.sec summary { font-size: 18px; font-weight: 600; padding: 12px 0; cursor: pointer; }
+    details.sec .hint2 { color: #6b7280; font-size: 15px; margin: 0 0 8px; }
+    .item { padding: 8px 0; border-top: 1px solid #e5e7eb; font-size: 16px; }
+    .item .lnk { font-weight: 700; color: #1f3a5f; background: none; border: 0; padding: 0; font-size: 17px; text-decoration: underline; }
+    .count { display: inline-block; min-width: 28px; padding: 1px 8px; border-radius: 999px; background: #e5e7eb; font-size: 15px; text-align: center; margin-left: 6px; }
+    .count.bad { background: #fecaca; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="tabs">
+      <button class="tab on" data-view="search">Search</button>
+      <button class="tab" data-view="add">+ Add File</button>
+      <button class="tab" data-view="out">Files out</button>
+      <button class="tab" data-view="clean">Clean-up</button>
+    </div>
+    <form class="bar" id="f">
+      <input id="q" type="search" placeholder="Name, case no., bank, file no..." autocomplete="off" autofocus>
+      <button type="button" id="mic" title="Search by voice" hidden>🎤</button>
+      <button class="go" type="submit">Search</button>
+    </form>
+  </header>
+
+  <div id="searchView">
+    <div class="status" id="status">Type at least 2 characters and press Search.</div>
+    <div id="suggest"></div>
+    <div id="filters"></div>
+    <div id="sRacks"></div>
+    <div id="results"></div>
+  </div>
+
+  <div id="addView">
+    <div id="msg"></div>
+    <div class="grid">
+      <label>Client Name <input id="f_client"></label>
+      <label>Cause Title <input id="f_title" placeholder="X Vs. Y"></label>
+      <label>Place <input id="f_place"></label>
+      <label>Court <input id="f_court"></label>
+      <label>Case No. <input id="f_caseno"></label>
+      <label>Case Status <input id="f_cstatus"></label>
+      <label>Date <input id="f_date"></label>
+    </div>
+
+    <h2>Choose a rack</h2>
+    <div class="legend">
+      <span><span class="dot" style="background:#22c55e"></span>Space available</span>
+      <span><span class="dot" style="background:#eab308"></span>Almost full</span>
+      <span><span class="dot" style="background:#ef4444"></span>Full</span>
+      <span><span class="dot" style="background:#9ca3af"></span>Status not set</span>
+    </div>
+    <div class="status" id="rackStatus" style="padding:0 0 8px">Loading racks…</div>
+    <div id="racks"></div>
+
+    <div class="save">
+      <button class="go" id="saveBtn" disabled>Save file</button>
+      <span id="preview"></span>
+    </div>
+  </div>
+
+  <div id="outView" class="view">
+    <div class="status" id="outStatus" style="padding:0 0 8px">Loading…</div>
+    <div class="stack" id="outList"></div>
+  </div>
+
+  <div id="cleanView" class="view">
+    <div class="daybar"><button id="cleanRun">Check the sheet now</button><span id="cleanStatus"></span></div>
+    <div id="cleanList"></div>
+  </div>
+
+  <div id="hov"></div>
+
+  <div id="co" class="overlay">
+    <div class="sheet">
+      <h3 id="coTitle"></h3>
+      <div class="list">
+        <div id="coMsg"></div>
+        <div class="grid">
+          <label>Taken by <input id="coPerson" list="people" autocomplete="off" placeholder="Name"></label>
+          <label>Note (optional) <input id="coNote" placeholder="e.g. for a hearing tomorrow"></label>
+        </div>
+        <datalist id="people"></datalist>
+      </div>
+      <div class="acts">
+        <button class="btn-close" id="coCancel">Cancel</button>
+        <button class="btn-use" id="coSave">Take out</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="pop" class="overlay">
+    <div class="sheet">
+      <h3 id="popTitle"></h3>
+      <div class="list" id="popList"></div>
+      <div class="acts">
+        <button class="btn-close" id="popClose">Close</button>
+        <button class="btn-use" id="popUse">Use this rack</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="edit" class="overlay">
+    <div class="sheet">
+      <h3 id="editTitle"></h3>
+      <div class="list">
+        <div id="editMsg"></div>
+        <div class="grid" id="editFields"></div>
+      </div>
+      <div class="acts">
+        <button class="btn-close" id="editCancel">Cancel</button>
+        <button class="btn-use" id="editSave">Save changes</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    const $q = $('q'), $status = $('status'), $results = $('results');
+
+    function esc(s) {
+      return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+    function highlight(text, q) {
+      const safe = esc(text);
+      if (!q) return safe;
+      const re = new RegExp(esc(q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+      return safe.replace(re, m => '<mark>' + m + '</mark>');
+    }
+
+    // ---------- Tabs ----------
+    const VIEWS = { search: 'searchView', add: 'addView', out: 'outView', clean: 'cleanView' };
+    document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+      const v = t.dataset.view;
+      document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === t));
+      Object.keys(VIEWS).forEach(k => { $(VIEWS[k]).style.display = k === v ? 'block' : 'none'; });
+      $('f').style.display = v === 'search' ? '' : 'none';
+      if (v === 'add' && !racks) loadRacks();
+      if (v === 'out') loadOut();
+    }));
+
+    // ---------- Search ----------
+    let last = null;           // { data, q, groups } of the latest search
+    let listMode = false;      // false = rack tiles, true = plain list
+    let popSearchRack = null;  // rack whose search results are open in the popup
+
+    // Filters over the current results: column index in A..H.
+    const FILTERS = [['place', 1, 'places'], ['court', 2, 'courts'], ['status', 6, 'statuses']];
+    let filt = {};
+    const fnorm = s => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+
+    // ---------- File numbers ----------
+    // Same matching as Code.gs: 08-00009 = 08-009 = 08-09. Keep IGNORED_PREFIX the same as there.
+    const IGNORED_PREFIX = '';
+    function fileKey(s) {
+      let t = String(s || '').toUpperCase().replace(/\s+/g, '');
+      if (IGNORED_PREFIX) t = t.replace(new RegExp('^' + IGNORED_PREFIX.toUpperCase() + '-?(?=\\d)'), '');
+      const m = t.match(/^(.*?)(\d+)$/);
+      return m ? m[1] + parseInt(m[2], 10) : '';
+    }
+
+    function cardHtml(r, q) {
+      const idx = last ? last.data.results.indexOf(r) : -1;
+      const fields = r.headers.map((h, i) => i === 0 || !r.cells[i] ? '' :
+        '<dt>' + esc(h) + '</dt><dd>' + highlight(r.cells[i], q) + '</dd>').join('');
+      return '<div class="card"><div class="top">' +
+        '<span class="fileno">' + highlight(r.fileNo || '(no file no.)', q) + '</span>' +
+        (idx >= 0 && r.fileNo ? '<span><button class="edit" data-idx="' + idx + '">✏️ Edit</button> ' +
+          (r.out ? '' : '<button class="takeout" data-idx="' + idx + '">📤 Take out</button>') + '</span>' : '') + '</div>' +
+        (fields ? '<dl>' + fields + '</dl>' : '') + outHtml(r.out, r.fileNo) + '</div>';
+    }
+
+    // ---------- Taken-out files ----------
+    function daysSince(iso) { return Math.floor((Date.now() - new Date(iso).getTime()) / 86400000); }
+
+    function outHtml(o, fileNo) {
+      if (!o) return '';
+      const d = daysSince(o.since);
+      return '<div class="outb"><span>📤 Out with <b>' + esc(o.person) + '</b> since ' + esc(dmy(o.since)) +
+        (d > 0 ? ' <span class="' + (d > 3 ? 'over' : '') + '">(' + d + ' day' + (d === 1 ? '' : 's') + ')</span>' : ' (today)') +
+        (o.note ? ' · ' + esc(o.note) : '') + '</span>' +
+        '<button class="ret" data-file="' + esc(fileNo) + '">↩ Returned</button></div>';
+    }
+
+    // Take-out form, opened from search cards.
+    let coTarget = null;       // { fileNo, rack, title, done(out) }
+    let people = [];
+    function openCheckout(t) {
+      coTarget = t;
+      $('coTitle').textContent = 'Take out ' + t.fileNo;
+      $('coMsg').innerHTML = '';
+      $('coPerson').value = '';
+      $('coNote').value = t.note || '';
+      $('people').innerHTML = people.map(p => '<option value="' + esc(p) + '">').join('');
+      $('coSave').disabled = false;
+      $('co').classList.add('on');
+      $('coPerson').focus();
+    }
+    function closeCheckout() { $('co').classList.remove('on'); coTarget = null; }
+    $('coCancel').addEventListener('click', closeCheckout);
+    $('co').addEventListener('click', e => { if (e.target.id === 'co') closeCheckout(); });
+    $('coSave').addEventListener('click', () => {
+      const t = coTarget;
+      if (!t) return;
+      $('coSave').disabled = true;
+      google.script.run
+        .withSuccessHandler(o => {
+          const p = $('coPerson').value.trim();
+          if (people.indexOf(p) < 0) people.unshift(p);
+          closeCheckout();
+          t.done(o);
+        })
+        .withFailureHandler(err => {
+          $('coMsg').innerHTML = '<div class="err">' + esc(/permission|access/i.test(err.message) ? 'You need Editor access to the spreadsheet.' : err.message) + '</div>';
+          $('coSave').disabled = false;
+        })
+        .checkOut(t.fileNo, t.rack, $('coPerson').value, $('coNote').value, t.title || '');
+    });
+
+    // Marks a file out/in everywhere it is shown, then redraws.
+    function setOut(fileNo, o) {
+      const k = fileKey(fileNo);
+      if (last) last.data.results.forEach(r => { if (fileKey(r.fileNo) === k) r.out = o; });
+      if (last) {
+        render(last.data, last.q);
+        if (popSearchRack && last.groups[popSearchRack]) showSearchPop(popSearchRack);
+      }
+    }
+
+    document.addEventListener('click', e => {
+      const t = e.target.closest('.takeout');
+      if (t && last) {
+        const r = last.data.results[Number(t.dataset.idx)];
+        if (r) openCheckout({ fileNo: r.fileNo, rack: r.sheet, title: r.cells[4] || r.cells[5] || '', done: o => setOut(r.fileNo, o) });
+        return;
+      }
+      const b = e.target.closest('.ret');
+      if (!b) return;
+      const fileNo = b.dataset.file;
+      if (!confirm(fileNo + ' is back in its rack?')) return;
+      b.disabled = true;
+      google.script.run
+        .withSuccessHandler(() => { setOut(fileNo, null); if ($('outView').style.display === 'block') loadOut(); })
+        .withFailureHandler(err => { b.disabled = false; alert(err.message); })
+        .checkIn(fileNo);
+    });
+
+    function filtered(list) {
+      return list.filter(r => FILTERS.every(([k, col]) => !filt[k] || fnorm(r.cells[col]) === filt[k]));
+    }
+
+    // One dropdown per filter, listing values found in the results, most common first.
+    function drawFilters(list) {
+      $('filters').innerHTML = FILTERS.map(([k, col, plural]) => {
+        const seen = {};
+        list.forEach(r => {
+          const n = fnorm(r.cells[col]);
+          if (!n) return;
+          (seen[n] = seen[n] || { label: String(r.cells[col]).trim(), count: 0 }).count++;
+        });
+        const opts = Object.keys(seen).sort((a, b) => seen[b].count - seen[a].count);
+        if (opts.length < 2 && !filt[k]) return '';
+        return '<select data-k="' + k + '"' + (filt[k] ? ' class="set"' : '') + '><option value="">All ' + plural + '</option>' +
+          opts.map(n => '<option value="' + esc(n) + '"' + (filt[k] === n ? ' selected' : '') + '>' +
+            esc(seen[n].label) + ' (' + seen[n].count + ')</option>').join('') + '</select>';
+      }).join('');
+    }
+
+    $('filters').addEventListener('change', e => {
+      const k = e.target.dataset.k;
+      if (!k || !last) return;
+      filt[k] = e.target.value;
+      render(last.data, last.q);
+    });
+
+    function render(data, q) {
+      const all = data.results;
+      $('sRacks').innerHTML = '';
+      $results.innerHTML = '';
+      if (!all.length) { last = null; $('filters').innerHTML = ''; $status.textContent = 'No files found for "' + q + '".'; return; }
+
+      last = { data, q, groups: {} };
+      // Dropdown counts reflect the other filters, so they narrow together.
+      drawFilters(all.filter(r => FILTERS.every(([k, col]) => !filt[k] || fnorm(r.cells[col]) === filt[k])));
+      const list = filtered(all);
+
+      // One group per rack, most matches first (ties keep tab order).
+      const groups = [];
+      list.forEach(r => {
+        if (!last.groups[r.sheet]) groups.push(last.groups[r.sheet] = { name: r.sheet, files: [] });
+        last.groups[r.sheet].files.push(r);
+      });
+      groups.sort((a, b) => b.files.length - a.files.length);
+
+      const anyFilter = FILTERS.some(([k]) => filt[k]);
+      $status.innerHTML = (anyFilter ? list.length + ' of ' + all.length : list.length) + ' file(s) in ' + groups.length + ' rack(s)' +
+        (data.truncated ? ' (showing first ' + all.length + ' — refine your search)' : '') + '.' +
+        '<button class="mini" id="toggleView">' + (listMode ? 'Rack view' : 'List view') + '</button>' +
+        (anyFilter ? '<button class="mini" id="clearFilters">Clear filters</button>' : '');
+
+      if (listMode) { $results.innerHTML = list.map(r => cardHtml(r, q)).join(''); return; }
+      $('sRacks').innerHTML = groups.map(g => {
+        const st = data.statuses[g.name] || 'unset';
+        const nums = g.files.slice(0, 3).map(f => esc(f.fileNo)).join(', ') + (g.files.length > 3 ? ' …' : '');
+        return '<button class="rk ' + st + '" data-name="' + esc(g.name) + '"><b>' + esc(g.name) + '</b>' +
+          '<span class="hint">★ ' + g.files.length + ' file(s)</span>' +
+          '<small class="fn">' + nums + '</small>' + (st === 'full' ? '<small class="fn">Full</small>' : '') + '</button>';
+      }).join('');
+    }
+
+    $status.addEventListener('click', e => {
+      if (!last) return;
+      if (e.target.id === 'toggleView') listMode = !listMode;
+      else if (e.target.id === 'clearFilters') filt = {};
+      else return;
+      render(last.data, last.q);
+    });
+
+    function showSearchPop(name) {
+      const files = last.groups[name].files;
+      showPop(name + ' — ' + files.length + ' file(s) for "' + last.q + '"', files.map(r => cardHtml(r, last.q)).join(''));
+      popSearchRack = name;
+    }
+
+    $('sRacks').addEventListener('click', e => {
+      const b = e.target.closest('.rk');
+      if (b && last) showSearchPop(b.dataset.name);
+    });
+
+    function runSearch() {
+      const q = $q.value.trim();
+      if (q.length < 2) { $status.textContent = 'Type at least 2 characters.'; return; }
+      lastAuto = q;
+      $status.textContent = 'Searching…';
+      $results.innerHTML = '';
+      $('sRacks').innerHTML = '';
+      $('suggest').innerHTML = '';
+      $('filters').innerHTML = '';
+      filt = {};
+      google.script.run
+        .withSuccessHandler(data => render(data, q))
+        .withFailureHandler(err => { $status.textContent = 'Error: ' + err.message; })
+        .search(q);
+      // Runs alongside the search: similar spellings / sound-alikes found in the sheet.
+      google.script.run
+        .withSuccessHandler(list => {
+          if ($q.value.trim() !== q || !list.length) return;   // user has moved on
+          $('suggest').innerHTML = '<span>Did you mean:</span>' + list.map(s =>
+            '<button class="sg" data-q="' + esc(s.query) + '">' + esc(s.word) +
+            ' <small>(' + s.count + ')</small></button>').join('');
+        })
+        .suggest(q);
+    }
+
+    $('f').addEventListener('submit', e => { e.preventDefault(); clearTimeout(typeTimer); runSearch(); });
+
+    // Search automatically once typing pauses, so Windows dictation (Win + H) needs no extra tap.
+    let typeTimer, lastAuto = '';
+    $q.addEventListener('input', () => {
+      clearTimeout(typeTimer);
+      typeTimer = setTimeout(() => {
+        const q = $q.value.trim();
+        if (q.length >= 3 && q !== lastAuto) { lastAuto = q; runSearch(); }
+      }, 1200);
+    });
+
+    $('suggest').addEventListener('click', e => {
+      const b = e.target.closest('.sg');
+      if (!b) return;
+      $q.value = b.dataset.q;
+      runSearch();
+    });
+
+    // ---------- Voice search ----------
+    // Google's web app frame usually blocks the microphone. Once that happens, the mic
+    // button instead readies the search box for Windows dictation (Win + H).
+    const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const DICTATE_TIP = 'Press Windows key + H (or the 🎤 on the touch keyboard) and speak. Results appear when you stop.';
+    let rec = null;
+    let micBlocked = false;   // per visit, so allowing the mic later takes effect on reload
+
+    function dictateFallback() {
+      $q.value = '';
+      $q.focus();
+      $status.textContent = DICTATE_TIP;
+    }
+
+    $('mic').hidden = false;
+    $('mic').addEventListener('click', () => {
+      if (!Speech || micBlocked) { dictateFallback(); return; }
+      if (rec) { rec.stop(); return; }
+        rec = new Speech();
+        rec.lang = navigator.language || 'en-US';   // e.g. 'en-IN' to fix the accent
+        rec.interimResults = true;
+        rec.onstart = () => { $('mic').classList.add('on'); $status.textContent = 'Listening… say a name, case no. or place.'; };
+        rec.onresult = e => {
+          const res = e.results[e.results.length - 1];
+          $q.value = res[0].transcript.replace(/[.?!]+$/, '');
+          if (res.isFinal) runSearch();
+        };
+        rec.onerror = e => {
+          if (/not-allowed|service-not-allowed/.test(e.error)) {
+            micBlocked = true;
+            dictateFallback();
+            return;
+          }
+          $status.textContent = e.error === 'no-speech' ? 'Didn\'t hear anything. Tap 🎤 and try again.' : 'Voice search error: ' + e.error;
+        };
+        rec.onend = () => { $('mic').classList.remove('on'); rec = null; };
+        rec.start();
+    });
+
+    // ---------- Edit a file ----------
+    const EDIT_LABELS = ['Place', 'Court', 'Case No.', 'Cause Title', 'Client Name', 'Case Status', 'Date'];
+    let editing = null;
+
+    document.addEventListener('click', e => {
+      const b = e.target.closest('.edit');
+      if (!b || !last) return;
+      const r = last.data.results[Number(b.dataset.idx)];
+      if (!r) return;
+      editing = r;
+      $('editTitle').textContent = 'Edit ' + r.fileNo;
+      $('editMsg').innerHTML = '';
+      $('editFields').innerHTML = EDIT_LABELS.map((label, i) =>
+        '<label>' + esc((r.headers[i + 1] || '').trim() || label) +
+        ' <input data-i="' + (i + 1) + '" value="' + esc(r.cells[i + 1] || '') + '"></label>').join('');
+      $('editSave').disabled = false;
+      $('editSave').textContent = 'Save changes';
+      $('edit').classList.add('on');
+    });
+
+    function closeEdit() { $('edit').classList.remove('on'); editing = null; }
+    $('editCancel').addEventListener('click', closeEdit);
+    $('edit').addEventListener('click', e => { if (e.target.id === 'edit') closeEdit(); });
+
+    $('editSave').addEventListener('click', () => {
+      const r = editing;
+      if (!r) return;
+      const fields = Array.from($('editFields').querySelectorAll('input')).map(i => i.value);
+      $('editSave').disabled = true;
+      $('editSave').textContent = 'Saving…';
+      google.script.run
+        .withSuccessHandler(cells => {
+          cells.forEach((v, i) => { r.cells[i] = v; });
+          closeEdit();
+          render(last.data, last.q);
+          if (popSearchRack && last.groups[popSearchRack]) showSearchPop(popSearchRack);
+          else if (popSearchRack) closePop();   // file no longer matches the filters
+        })
+        .withFailureHandler(err => {
+          const m = /permission|access/i.test(err.message) ? 'You need Editor access to the spreadsheet to edit files.' : err.message;
+          $('editMsg').innerHTML = '<div class="err">' + esc(m) + '</div>';
+          $('editSave').disabled = false;
+          $('editSave').textContent = 'Save changes';
+        })
+        .updateFile(r.sheet, r.row, r.fileNo, fields);
+    });
+
+    // ---------- Dates ----------
+    const pad2 = n => String(n).padStart(2, '0');
+    function dmy(iso) { const d = new Date(iso); return isNaN(d) ? String(iso) : pad2(d.getDate()) + '-' + pad2(d.getMonth() + 1) + '-' + d.getFullYear(); }
+    // ---------- Files out ----------
+    function loadOut() {
+      $('outStatus').textContent = 'Loading…';
+      google.script.run
+        .withSuccessHandler(res => {
+          people = res.people;
+          const late = res.files.filter(f => f.days > 3).length;
+          $('outStatus').innerHTML = res.files.length
+            ? res.files.length + ' file(s) out of the racks' + (late ? ', <span class="over">' + late + ' out for more than 3 days</span>' : '') + '.'
+            : 'Every file is in its rack.';
+          $('outList').innerHTML = res.files.map(f => '<div class="card"><div class="top"><span class="fileno">' + esc(f.fileNo) + '</span></div>' +
+            (f.title ? '<div class="meta">' + esc(f.title) + '</div>' : '') + outHtml(f, f.fileNo) + '</div>').join('');
+        })
+        .withFailureHandler(err => { $('outStatus').textContent = 'Error: ' + err.message; })
+        .getFilesOut();
+    }
+
+    // Names used before, for the "Taken by" suggestions.
+    google.script.run.withSuccessHandler(res => { if (!people.length) people = res.people; }).getFilesOut();
+
+    // ---------- Clean-up report ----------
+    $('cleanRun').addEventListener('click', () => {
+      $('cleanStatus').textContent = 'Checking every rack…';
+      $('cleanRun').disabled = true;
+      google.script.run
+        .withSuccessHandler(rep => {
+          $('cleanRun').disabled = false;
+          const total = rep.sections.reduce((s, x) => s + x.items.length, 0);
+          $('cleanStatus').textContent = total ? total + ' thing(s) to look at.' : 'Nothing to fix. 🎉';
+          $('cleanList').innerHTML = rep.sections.filter(s => s.items.length).map(s =>
+            '<details class="sec"><summary>' + esc(s.title) + ' <span class="count bad">' + s.items.length + '</span></summary>' +
+            '<p class="hint2">' + esc(s.hint) + '</p>' + s.items.map(it => '<div class="item">' +
+              (it.fileNo ? '<button class="lnk" data-q="' + esc(it.fileNo) + '">' + esc(it.fileNo) + '</button> ' : '') +
+              (it.rack ? '<b>' + esc(it.rack) + ':</b> ' : '') + esc(it.fileNo ? it.text.replace(it.fileNo, '').replace(/^\s+/, '') : it.text) + '</div>').join('') +
+            '</details>').join('');
+        })
+        .withFailureHandler(err => { $('cleanRun').disabled = false; $('cleanStatus').textContent = 'Error: ' + err.message; })
+        .cleanupReport();
+    });
+
+    // Tapping a file number in the report opens it in Search.
+    $('cleanList').addEventListener('click', e => {
+      const b = e.target.closest('.lnk');
+      if (!b) return;
+      document.querySelector('.tab[data-view=search]').click();
+      $q.value = b.dataset.q;
+      runSearch();
+    });
+
+    // ---------- Add file ----------
+    let racks = null;          // from getRacks()
+    let nameCounts = {};       // rack -> files already held for this client
+    let nameFiles = {};        // rack -> [{ row, cells }] of those files
+    let nameUsed = '';
+    let selected = null;
+    let pickedByHand = false;
+
+    function loadRacks() {
+      $('rackStatus').textContent = 'Loading racks…';
+      google.script.run
+        .withSuccessHandler(list => { racks = list; drawRacks(); })
+        .withFailureHandler(err => { $('rackStatus').textContent = 'Could not load racks: ' + err.message; })
+        .getRacks();
+    }
+
+    function ago(ts) {
+      if (!ts) return '';
+      const m = Math.round((Date.now() - ts) / 60000);
+      if (m < 60) return 'used ' + Math.max(m, 1) + ' min ago';
+      if (m < 1440) return 'used ' + Math.round(m / 60) + ' h ago';
+      return 'used ' + Math.round(m / 1440) + ' d ago';
+    }
+
+    // Order: racks already holding this client's files, then most recently used, then tab order.
+    function sortedRacks() {
+      return racks.map((r, i) => Object.assign({ order: i, match: nameCounts[r.name] || 0 }, r))
+        .sort((a, b) => (b.match - a.match) || (b.lastUsedAt - a.lastUsedAt) || (a.order - b.order));
+    }
+
+    function drawRacks() {
+      const list = sortedRacks();
+      if (!pickedByHand) {
+        const best = list.find(r => r.match && r.status !== 'full' && r.nextFileNo);
+        selected = best ? best.name : (selected && list.some(r => r.name === selected) ? selected : null);
+      }
+      const matches = list.filter(r => r.match).length;
+      $('rackStatus').textContent = matches
+        ? matches + ' rack(s) already hold files for "' + nameUsed + '" — shown first.'
+        : 'Tap a rack. Most recently used racks are shown first.';
+      $('racks').innerHTML = list.map(r => {
+        // A full rack that holds this client's files stays tappable so its files can be viewed.
+        const disabled = (r.status === 'full' || !r.nextFileNo) && !r.match;
+        return '<button class="rk ' + r.status + (r.name === selected ? ' sel' : '') + '" data-name="' + esc(r.name) + '"' +
+          (disabled ? ' disabled' : '') + '><b>' + esc(r.name) + '</b>' +
+          (r.match ? '<span class="hint">★ ' + r.match + ' file(s) for this client</span><br>' : '') +
+          (r.status === 'full' ? 'Full' : r.nextFileNo ? 'Next: ' + esc(r.nextFileNo) : 'No file numbers') +
+          (r.lastUsedAt ? '<br><small>' + ago(r.lastUsedAt) + '</small>' : '') + '</button>';
+      }).join('');
+      updatePreview();
+    }
+
+    $('racks').addEventListener('click', e => {
+      const b = e.target.closest('.rk');
+      if (!b || b.disabled) return;
+      if (nameFiles[b.dataset.name]) { openPop(b.dataset.name); return; }
+      pickRack(b.dataset.name);
+    });
+
+    function pickRack(name) {
+      selected = name;
+      pickedByHand = true;
+      drawRacks();
+    }
+
+    // ---------- Popup ----------
+    const POP_FIELDS = [[4, 'Cause Title'], [5, 'Client'], [3, 'Case No.'], [2, 'Court'], [1, 'Place'], [6, 'Status'], [7, 'Date']];
+    let popAction = null;      // what the orange button does
+
+    // cells = A..H of one file; badge = extra pill (rack name, duplicate reason).
+    function fileCardHtml(cells, hl, badges) {
+      const dl = POP_FIELDS.map(([i, label]) => cells[i] ?
+        '<dt>' + label + '</dt><dd>' + highlight(cells[i], hl) + '</dd>' : '').join('');
+      return '<div class="card"><div class="top"><span class="fileno">' + esc(cells[0] || '(no file no.)') + '</span>' +
+        (badges || '') + '</div>' + (dl ? '<dl>' + dl + '</dl>' : '') + '</div>';
+    }
+
+    function filesHtml(name) {
+      return (nameFiles[name] || []).map(f => fileCardHtml(f.cells, nameUsed)).join('');
+    }
+
+    // Shared popup. useLabel + action = show the orange button; omitted = view only.
+    function showPop(title, html, useLabel, usable, action) {
+      hideHov();
+      popSearchRack = null;
+      popAction = action || null;
+      $('popTitle').textContent = title;
+      $('popList').innerHTML = html;
+      $('popList').scrollTop = 0;
+      $('popUse').style.display = useLabel ? '' : 'none';
+      $('popUse').disabled = !usable;
+      $('popUse').textContent = useLabel || '';
+      $('pop').classList.add('on');
+    }
+
+    function openPop(name) {
+      const r = racks.find(x => x.name === name);
+      const files = nameFiles[name] || [];
+      const usable = r && r.status !== 'full' && r.nextFileNo;
+      showPop(name + ' — ' + files.length + ' file(s) for "' + nameUsed + '"', filesHtml(name),
+              usable ? 'Use this rack (next: ' + r.nextFileNo + ')' : 'Rack is full', usable, () => pickRack(name));
+    }
+    function closePop() { $('pop').classList.remove('on'); popSearchRack = null; popAction = null; }
+
+    $('popClose').addEventListener('click', closePop);
+    $('pop').addEventListener('click', e => { if (e.target.id === 'pop') closePop(); });
+    $('popUse').addEventListener('click', () => { const a = popAction; closePop(); if (a) a(); });
+
+    // Hovering a rack tile with a mouse previews its files; touch taps use the popup instead.
+    // preview(name) returns { count, html } for that rack, or null when it has nothing to show.
+    let hovRack = null;
+    function hoverPreview(container, preview) {
+      container.addEventListener('pointerover', e => {
+        if (e.pointerType !== 'mouse') return;
+        const b = e.target.closest('.rk');
+        if (!b || b.dataset.name === hovRack) return;
+        const p = preview(b.dataset.name);
+        if (!p) return;
+        hovRack = b.dataset.name;
+        const hov = $('hov');
+        hov.innerHTML = '<div class="head">' + esc(hovRack) + ' — ' + p.count + ' file(s). Click to open.</div>' + p.html;
+        hov.classList.add('on');
+        // Place beside the rack tile, flipping to whichever side has room.
+        const rc = b.getBoundingClientRect(), w = hov.offsetWidth, h = hov.offsetHeight;
+        const left = rc.right + 8 + w <= innerWidth ? rc.right + 8 : Math.max(16, rc.left - 8 - w);
+        const top = Math.min(Math.max(16, rc.top), innerHeight - h - 16);
+        hov.style.left = left + 'px';
+        hov.style.top = Math.max(16, top) + 'px';
+      });
+      container.addEventListener('pointerout', e => {
+        if (e.pointerType !== 'mouse') return;
+        const to = e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest('.rk');
+        if (!to || to.dataset.name !== hovRack) hideHov();
+      });
+    }
+    function hideHov() { $('hov').classList.remove('on'); hovRack = null; }
+
+    hoverPreview($('racks'), name => nameFiles[name] &&
+      { count: nameFiles[name].length, html: filesHtml(name) });
+    hoverPreview($('sRacks'), name => {
+      const g = last && last.groups[name];
+      return g && { count: g.files.length, html: g.files.map(r => cardHtml(r, last.q)).join('') };
+    });
+
+    function updatePreview() {
+      const r = racks && racks.find(x => x.name === selected);
+      $('saveBtn').disabled = !r;
+      $('preview').innerHTML = r ? 'Will be saved as <b>' + esc(r.nextFileNo) + '</b> in <b>' + esc(r.name) + '</b>' : 'Select a rack';
+    }
+
+    // Look up which racks already hold this client: Client Name, else the first party of the Cause Title.
+    let nameTimer;
+    function onNameInput() {
+      clearTimeout(nameTimer);
+      nameTimer = setTimeout(() => {
+        const client = $('f_client').value.trim();
+        const party = $('f_title').value.split(/\s+vs\.?\s+/i)[0].trim();
+        const name = client.length >= 3 ? client : party;
+        if (name === nameUsed) return;
+        nameUsed = name;
+        if (name.length < 3) { nameCounts = {}; nameFiles = {}; if (racks) drawRacks(); return; }
+        google.script.run.withSuccessHandler(res => {
+          if (name !== nameUsed) return;   // a newer lookup is on its way
+          nameCounts = res.counts;
+          nameFiles = res.files;
+          if (racks) drawRacks();
+        }).racksForName(name);
+      }, 600);
+    }
+    $('f_client').addEventListener('input', onNameInput);
+    $('f_title').addEventListener('input', onNameInput);
+
+    const FIELD_IDS = ['f_place', 'f_court', 'f_caseno', 'f_title', 'f_client', 'f_cstatus', 'f_date'];
+
+    // Check for the same Case No. / Cause Title first; if found, show them and ask.
+    $('saveBtn').addEventListener('click', () => {
+      const r = racks.find(x => x.name === selected);
+      if (!r) return;
+      const fields = FIELD_IDS.map(id => $(id).value);
+      if (!fields.some(v => v.trim())) { showMsg('err', 'Fill in at least one field.'); return; }
+      $('saveBtn').disabled = true;
+      $('preview').textContent = 'Checking for duplicates…';
+      google.script.run
+        .withSuccessHandler(dups => {
+          updatePreview();
+          if (!dups.length) {
+            if (confirm('Save this file as ' + r.nextFileNo + ' in ' + r.name + '?')) doSave(r, fields);
+            return;
+          }
+          showPop('Possible duplicate — ' + dups.length + ' existing file(s)',
+            dups.map(d => fileCardHtml(d.cells, '', '<span class="why">' + esc(d.why) + '</span>')).join(''),
+            'Save anyway as ' + r.nextFileNo, true, () => doSave(r, fields));
+        })
+        .withFailureHandler(() => {   // the check failing shouldn't block saving
+          updatePreview();
+          if (confirm('Save this file as ' + r.nextFileNo + ' in ' + r.name + '?')) doSave(r, fields);
+        })
+        .findDuplicates($('f_caseno').value, $('f_title').value);
+    });
+
+    function doSave(r, fields) {
+      $('saveBtn').disabled = true;
+      $('preview').textContent = 'Saving…';
+      google.script.run
+        .withSuccessHandler(res => {
+          showMsg('ok', 'Saved. File No. <b style="font-size:24px">' + esc(res.fileNo) + '</b>.');
+          FIELD_IDS.forEach(id => { $(id).value = ''; });
+          nameCounts = {}; nameFiles = {}; nameUsed = ''; pickedByHand = false;
+          loadRacks();
+        })
+        .withFailureHandler(err => {
+          const m = /permission|access/i.test(err.message)
+            ? 'You need Editor access to the spreadsheet to add files.' : err.message;
+          showMsg('err', esc(m));
+          loadRacks();
+        })
+        .addFile(r.name, fields);
+    }
+
+    function showMsg(kind, html) {
+      $('msg').innerHTML = '<div class="' + kind + '">' + html + '</div>';
+      window.scrollTo(0, 0);
+    }
+  </script>
+</body>
+</html>

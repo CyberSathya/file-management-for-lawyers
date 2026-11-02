@@ -1,0 +1,6 @@
+# clasp: holds your script ID and login – never commit
+.clasp.json
+.clasprc.json
+node_modules/
+.DS_Store
+Thumbs.db
